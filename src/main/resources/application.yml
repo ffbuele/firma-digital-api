@@ -1,0 +1,20 @@
+server:
+  port: 8080             # Cambia el puerto si quieres (por defecto es 8080)
+  servlet:
+    context-path: /      # Contexto base (puedes poner /firma si quieres /firma/api/...)
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
+  http:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+logging:
+  level:
+    root: INFO
+    com.ffbuele: DEBUG   # O el package de tus clases para debug detallado
