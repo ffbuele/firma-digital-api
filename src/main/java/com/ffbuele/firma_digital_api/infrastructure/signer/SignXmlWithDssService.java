@@ -14,23 +14,38 @@ import eu.europa.esig.dss.spi.validation.CommonCertificateVerifier;
 import eu.europa.esig.dss.token.DSSPrivateKeyEntry;
 import eu.europa.esig.dss.token.Pkcs12SignatureToken;
 import eu.europa.esig.dss.xades.XAdESSignatureParameters;
+import eu.europa.esig.dss.xades.dataobject.DSSDataObjectFormat;
+import eu.europa.esig.dss.xades.reference.DSSReference;
+import eu.europa.esig.dss.xades.reference.DSSTransform;
+import eu.europa.esig.dss.xades.reference.EnvelopedSignatureTransform;
 import eu.europa.esig.dss.xades.signature.XAdESService;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import java.security.KeyStore.PasswordProtection;
 
 import eu.europa.esig.dss.xml.common.definition.DSSNamespace;
 import org.springframework.stereotype.Service;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+
+import javax.xml.parsers.DocumentBuilderFactory;
 
 @Service
 public class SignXmlWithDssService implements SignXmlService {
 
     @Override
     public byte[] signXml(SignatureRequest request) throws Exception {
+        if (!tieneNodoConId(request.getXml(), "comprobante")) {
+            throw new Exception("El XML no contiene un nodo con Id=\"comprobante\". No se puede firmar.");
+        }
+
         PasswordProtection passwordProtection = new PasswordProtection(request.getPassword().toCharArray());
         try (Pkcs12SignatureToken token = new Pkcs12SignatureToken(
                 new ByteArrayInputStream(request.getP12()),
@@ -53,11 +68,21 @@ public class SignXmlWithDssService implements SignXmlService {
             parameters.setSignedInfoCanonicalizationMethod("http://www.w3.org/TR/2001/REC-xml-c14n-20010315");
             parameters.setXadesNamespace(new DSSNamespace("http://uri.etsi.org/01903/v1.3.2#", "etsi"));
 
-            XAdESService service = new XAdESService(new CommonCertificateVerifier());
+// No definas DSSReference a mano ni uses setReferences() aquí
 
+            DSSDataObjectFormat dataObjectFormat = new DSSDataObjectFormat();
+            dataObjectFormat.setMimeType("text/xml");
+// El objectReference DEBE ser "#comprobante" (el Id de tu raíz)
+            dataObjectFormat.setObjectReference("#comprobante");
+            parameters.setDataObjectFormatList(Collections.singletonList(dataObjectFormat));
+
+// Proceso de firma
+            XAdESService service = new XAdESService(new CommonCertificateVerifier());
             ToBeSigned dataToSign = service.getDataToSign(toSignDocument, parameters);
             SignatureValue signatureValue = token.sign(dataToSign, parameters.getDigestAlgorithm(), privateKey);
             DSSDocument signedDocument = service.signDocument(toSignDocument, parameters, signatureValue);
+
+
 
             try (InputStream is = signedDocument.openStream();
                  ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
@@ -69,5 +94,19 @@ public class SignXmlWithDssService implements SignXmlService {
                 return baos.toByteArray();
             }
         }
+    }
+
+    private boolean tieneNodoConId(byte[] xml, String idBuscado) throws Exception {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true); // importante para firmas
+        Document doc = factory.newDocumentBuilder().parse(new ByteArrayInputStream(xml));
+        NodeList allElements = doc.getElementsByTagName("*");
+        for (int i = 0; i < allElements.getLength(); i++) {
+            Element el = (Element) allElements.item(i);
+            if (el.hasAttribute("Id") && idBuscado.equals(el.getAttribute("Id"))) {
+                return true;
+            }
+        }
+        return false;
     }
 }
