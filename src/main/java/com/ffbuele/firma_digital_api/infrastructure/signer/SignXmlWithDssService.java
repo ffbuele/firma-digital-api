@@ -145,11 +145,11 @@ public class SignXmlWithDssService implements SignXmlService {
             throw new IllegalArgumentException("XML sin elemento raíz");
         }
 
-        if (!root.hasAttribute("Id")) root.setAttribute("Id", idValue);
-        if (!root.hasAttribute("id")) root.setAttribute("id", idValue);
+        root.removeAttribute("Id");
+        root.setAttribute("id", idValue);
 
         try {
-            root.setIdAttribute("Id", true);
+            root.setIdAttribute("id", true);
         } catch (NoSuchMethodError | IllegalArgumentException ignored) {
         }
 

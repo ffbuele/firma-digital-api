@@ -14,10 +14,6 @@ import org.springframework.web.multipart.*;
 public class SignXmlController {
     private final SignXmlService signXmlService;
 
-//    public SignXmlController(SignXmlService signXmlService) {
-//        this.signXmlService = signXmlService;
-//    }
-
     @PostMapping(
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
             produces = MediaType.APPLICATION_XML_VALUE
@@ -25,7 +21,8 @@ public class SignXmlController {
     public ResponseEntity<byte[]> signXml(
             @RequestPart("xml") MultipartFile xml,
             @RequestPart("p12") MultipartFile p12,
-            @RequestPart("password") String password
+            @RequestPart("password") String password,
+            @RequestPart("filename") String filename
     ) throws Exception {
         SignatureRequest req = new SignatureRequest();
         req.setXml(xml.getBytes());
@@ -36,7 +33,7 @@ public class SignXmlController {
 
         // Prepara la respuesta para que el navegador/cliente lo descargue como archivo
         return ResponseEntity.ok()
-                .header("Content-Disposition", "attachment; filename=xml_firmado.xml")
+                .header("Content-Disposition", "attachment; filename=" + filename + ".xml")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .body(signedXml);
     }
